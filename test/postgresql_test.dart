@@ -16,7 +16,6 @@ Settings loadSettings(){
 main() {
 
   String validUri = loadSettings().toUri();
-  
   group('Connect', () {
 
     test('Connect', () {
@@ -417,41 +416,41 @@ main() {
           "('-Infinity', '-Infinity');");
       conn.execute("insert into dart_unit_test values "
           "(@0, @0), (@1, @1), (@2, @2), (@3, @3), (@4, @4), (@5, @5);",
-            [-0.0, double.NAN, double.INFINITY, double.NEGATIVE_INFINITY, 1e30, 
+            [-0.0, double.NAN, double.INFINITY, double.NEGATIVE_INFINITY, 1e30,
              1e-30]);
-      
+
       conn.query('select a, b from dart_unit_test').toList().then(
         expectAsync((rows) {
           expect(rows[0][0], equals(1.1.toDouble()));
           expect(rows[0][1], equals(2.2.toDouble()));
-          
+
           expect(rows[1][0], equals(-0.0));
           expect(rows[1][1], equals(-0.0));
-          
+
           expect(rows[2][0], isNaN);
           expect(rows[2][1], isNaN);
-          
+
           expect(rows[3][0], equals(double.INFINITY));
           expect(rows[3][1], equals(double.INFINITY));
-          
+
           expect(rows[4][0], equals(double.NEGATIVE_INFINITY));
           expect(rows[4][1], equals(double.NEGATIVE_INFINITY));
-          
+
           expect(rows[5][0], equals(-0.0));
           expect(rows[5][1], equals(-0.0));
-          
+
           expect(rows[6][0], isNaN);
           expect(rows[6][1], isNaN);
-          
+
           expect(rows[7][0], equals(double.INFINITY));
           expect(rows[7][1], equals(double.INFINITY));
-          
+
           expect(rows[8][0], equals(double.NEGATIVE_INFINITY));
           expect(rows[8][1], equals(double.NEGATIVE_INFINITY));
-          
+
           expect(rows[9][0], equals(1e30));
           expect(rows[9][1], equals(1e30));
-          
+
           expect(rows[10][0], equals(1e-30));
           expect(rows[10][1], equals(1e-30));
         })
@@ -518,6 +517,74 @@ main() {
 
     });
 
+  });
+
+  group('Multi Execute', () {
+    Connection conn;
+
+    setUp(() {
+      return connect(validUri).then((c) => conn = c);
+    });
+
+    tearDown(() {
+      if (conn != null) conn.close();
+    });
+
+    test('Rows affected', () {
+      conn.execute('create temporary table dart_unit_test (a int)');
+
+      conn.executeMulti('insert into dart_unit_test values (@0)',[
+        [1],[2]
+      ]).then(
+          expectAsync((rowsAffected) {
+            expect(rowsAffected, equals(2));
+          })
+      );
+
+      conn.executeMulti('insert into dart_unit_test values (@a)',[
+        {'a':1},
+        {'a':2},
+        {'a':3}
+      ]).then(
+          expectAsync((rowsAffected) {
+            expect(rowsAffected, equals(3));
+          })
+      );
+    });
+  });
+
+  group('Multi Query', () {
+    Connection conn;
+
+    setUp(() {
+      return connect(validUri).then((c) => conn = c);
+    });
+
+    tearDown(() {
+      if (conn != null) conn.close();
+    });
+
+    test('Insert id', () async {
+      conn.execute('create temporary table dart_unit_test (id serial,a int)');
+
+      var rows = await conn.queryMulti('insert into dart_unit_test (a) values (@0) returning id',[
+        [44],[55],[66]
+      ]).toList();
+
+      expect(rows[0].id, equals(1));
+      expect(rows[1].id, equals(2));
+      expect(rows[2].id, equals(3));
+
+      rows = await conn.queryMulti('insert into dart_unit_test (a) values (@0) returning id',[
+        {'a': 22},
+        {'a': 33},
+        {'a': 44}
+      ]).toList();
+
+      expect(rows[0].id, equals(4));
+      expect(rows[1].id, equals(5));
+      expect(rows[2].id, equals(6));
+    });
   });
 
   group('PgException', () {
