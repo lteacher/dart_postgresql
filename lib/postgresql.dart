@@ -4,39 +4,39 @@ import 'dart:async';
 import 'package:postgresql/src/postgresql_impl/postgresql_impl.dart' as impl;
 
 /// Connect to a PostgreSQL database.
-/// 
+///
 /// A uri has the following format:
-/// 
+///
 ///     'postgres://username:password@hostname:5432/database'
 ///
 /// The application name is displayed in the pg_stat_activity view. This
 /// parameter is optional.
-/// 
+///
 /// Care is required when setting the time zone, this is generally not required,
-/// the default, if omitted, is to use the server provided default which will 
+/// the default, if omitted, is to use the server provided default which will
 /// typically be localtime or sometimes UTC. Setting the time zone to UTC will
 /// override the server provided default and all [DateTime] objects will be
-/// returned in UTC. In the case where the application server is on a different 
+/// returned in UTC. In the case where the application server is on a different
 /// host than the database, and the host's [DateTime]s should be in the hosts
-/// localtime, then set this to the host's local time zone name. On linux 
+/// localtime, then set this to the host's local time zone name. On linux
 /// systems this can be obtained using:
-/// 
+///
 ///     new File('/etc/timezone').readAsStringSync().trim()
-/// 
+///
 /// The debug name is shown in error messages, this helps tracking down which
 /// connection caused an error.
-/// 
+///
 /// The type converter allows the end user to provide their own mapping to and
 /// from Dart types to PostgreSQL types.
 
 Future<Connection> connect(
-    String uri, 
+    String uri,
     { Duration connectionTimeout,
       String applicationName,
       String timeZone,
       TypeConverter typeConverter,
-      String debugName}) 
-    
+      String debugName})
+
       => impl.ConnectionImpl.connect(
             uri,
             connectionTimeout: connectionTimeout,
@@ -70,18 +70,18 @@ abstract class Connection {
   /// or other special characters these will be escaped.
   ///
   /// For example:
-  ///  
+  ///
   ///     var a = 'bar';
   ///     var b = 42;
-  ///     
+  ///
   ///     conn.query("insert into foo_table values (@a, @b);", {'a': a, 'b': b})
   ///       .then(...);
-  ///       
+  ///
   ///  Or:
-  ///  
+  ///
   ///     conn.query("insert into foo_table values (@0, @1);", [a, b])
   ///        .then(...);
-  ///        
+  ///
   ///  If you need to use an '@' character in your query then you will need to
   ///  escape it as '@@'. If no values are provided, then there is no need to
   ///  escape '@' characters.
@@ -93,6 +93,15 @@ abstract class Connection {
   /// information returned.
   Future<int> execute(String sql, [values]);
 
+  /// Queue a sql query to be run, returning a [Stream] of [Row]s.
+  /// Indentical to [query] except that it can take a collection of values
+  /// for example, a collection of insertions returning id
+  Stream<Row> queryMulti(String sql, [Iterable values]);
+
+  /// Queues a command for execution, and when done, returns the number of rows
+  /// affected by the sql command. Indentical to [execute] except that it takes
+  /// a collection of values to affect against the given [sql]
+  Future<int> executeMulti(String sql, [values]);
 
   /// Allow multiple queries to be run in a transaction. The user must wait for
   /// runInTransaction() to complete before making any further queries.
@@ -104,8 +113,8 @@ abstract class Connection {
   void close();
 
   /// The server can send errors and notices, or the network can cause errors
-  /// while the connection is not being used to make a query. These can be 
-  /// caught by listening to the messages stream. See [ClientMessage] and 
+  /// while the connection is not being used to make a query. These can be
+  /// caught by listening to the messages stream. See [ClientMessage] and
   /// [ServerMessage] for more information.
   Stream<Message> get messages;
 
@@ -114,19 +123,19 @@ abstract class Connection {
 
   /// Server configuration parameters such as date format and timezone.
   Map<String,String> get parameters;
-  
+
   /// The pid of the process the server started to handle this connection.
   int get backendPid;
-  
+
   /// The debug name passed into the connect function.
   String get debugName;
-  
+
   /// The current state of the connection.
   ConnectionState get state;
 
   /// The state of the current transaction.
   TransactionState get transactionState;
-  
+
   /// Deprecated. Use transactionState.
   @deprecated TransactionState get transactionStatus;
 }
@@ -145,17 +154,17 @@ abstract class Connection {
 ///
 @proxy
 abstract class Row {
-  
+
   /// Get a column value by column index (zero based).
   operator[] (int i);
-  
+
   /// Iterate through column names and values.
   void forEach(void f(String columnName, columnValue));
-  
+
   /// An unmodifiable list of column values.
   List toList();
-  
-  /// An unmodifiable map of column names and values. 
+
+  /// An unmodifiable map of column names and values.
   Map toMap();
 
   List<Column> getColumns();
@@ -177,10 +186,10 @@ abstract class Column {
 
 
 /// The server can send errors and notices, or the network can cause errors
-/// while the connection is not being used to make a query. See 
+/// while the connection is not being used to make a query. See
 /// [ClientMessage] and [ServerMessage] for more information.
 abstract class Message {
-    
+
   /// Returns true if this is an error, otherwise it is a server-side notice,
   /// or logging.
   bool get isError;
@@ -212,7 +221,7 @@ abstract class ClientMessage implements Message {
                  StackTrace stackTrace}) = impl.ClientMessageImpl;
 
   final exception;
-  
+
   final StackTrace stackTrace;
 }
 
@@ -224,7 +233,7 @@ abstract class ServerMessage implements Message {
 
   /// All of the information returned from the server.
   Map<String,String> get fields;
-  
+
   /// An identifier for the connection. Useful for logging messages in a
   /// connection pool.
   String get connectionName;
@@ -234,17 +243,17 @@ abstract class ServerMessage implements Message {
   /// a notice message they are
   /// WARNING, NOTICE, DEBUG, INFO, or LOG.
   String get severity;
-  
+
   /// A PostgreSQL error code.
   /// See http://www.postgresql.org/docs/9.2/static/errcodes-appendix.html
   String get code;
-  
+
   /// A human readible error message, typically one line.
   String get message;
 
   /// More detailed information.
   String get detail;
-  
+
   String get hint;
 
   /// The position as an index into the original query string where the syntax
@@ -252,7 +261,7 @@ abstract class ServerMessage implements Message {
   /// measured in characters not bytes. If the server does not supply a
   /// position this field is null.
   String get position;
-  
+
   String get internalPosition;
   String get internalQuery;
   String get where;
@@ -269,15 +278,15 @@ abstract class ServerMessage implements Message {
 
 
 /// By implementing this class and passing it to connect(), it is possible to
-/// provide a customised handling of the Dart type encoding and PostgreSQL type 
-/// decoding. 
+/// provide a customised handling of the Dart type encoding and PostgreSQL type
+/// decoding.
 abstract class TypeConverter {
 
   factory TypeConverter() = impl.DefaultTypeConverter;
 
   /// Returns all results in the raw postgresql string format without conversion.
   factory TypeConverter.raw() = impl.RawTypeConverter;
-  
+
   /// Convert an object to a string representation to use in a sql query.
   /// Be very careful to escape your strings correctly. If you get this wrong
   /// you will introduce a sql injection vulnerability. Consider using the
@@ -319,22 +328,22 @@ class ConnectionState {
 /// if the transaction has failed.
 class TransactionState {
   final String _name;
-  
+
   const TransactionState(this._name);
-  
+
   String toString() => _name;
 
   /// Directly after sending a query the transaction state is unknown, as the
   /// query may change the transaction state. Wait until the query is completed
   /// to query the transaction state.
   static const TransactionState unknown = const TransactionState('unknown');
-  
+
   /// The current session has not opened a transaction.
   static const TransactionState none = const TransactionState('none');
-  
+
   /// The current session has an open transaction.
   static const TransactionState begun = const TransactionState('begun');
-  
+
   /// A transaction was opened on the current session, but an error occurred.
   /// In this state all futher commands will be ignored until a rollback is
   /// issued.
@@ -366,19 +375,19 @@ class Isolation {
 
 
 class PostgresqlException implements Exception {
-  
+
   PostgresqlException(this.message, this.connectionName, {this.serverMessage, this.exception});
-  
+
   final String message;
-  
+
   /// Note the connection name can be null in some cases when thrown by pool.
   final String connectionName;
-  
+
   final ServerMessage serverMessage;
-  
+
   /// Note may be null.
   final exception;
-  
+
   String toString() {
     if (serverMessage != null) return serverMessage.toString();
     return connectionName == null ? message : '$connectionName $message';
@@ -387,26 +396,26 @@ class PostgresqlException implements Exception {
 
 /// Settings can be used to create a postgresql uri for use in the [connect]
 /// function.
-/// 
+///
 /// An example of loading the connection settings from yaml using the
-/// [yaml package](https://pub.dartlang.org/packages/yaml): 
-/// 
+/// [yaml package](https://pub.dartlang.org/packages/yaml):
+///
 ///     var map = loadYaml(new File('db.yaml').readAsStringSync());
 ///     var settings = new Settings.fromMap(map);
 ///     var uri = settings.toUri();
 ///     connect(uri).then(...);
-///     
+///
 abstract class Settings {
 
   /// The default port used by a PostgreSQL server.
   static const num defaultPort = 5432;
-  
+
   factory Settings(String host, int port, String user, String password,
       String database, {bool requireSsl}) = impl.SettingsImpl;
-  
+
   /// Parse a PostgreSQL URI string.
   factory Settings.fromUri(String uri) = impl.SettingsImpl.fromUri;
-  
+
   /// Read settings from a map and set default values for unspecified values.
   /// Throws [PostgresqlException] when a required setting is not provided.
   factory Settings.fromMap(Map config) = impl.SettingsImpl.fromMap;
